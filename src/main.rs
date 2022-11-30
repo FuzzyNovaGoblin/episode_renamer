@@ -79,13 +79,13 @@ fn main() {
 
     clear_screen!();
 
-    find_season_directories(&running_directory);
+    find_season_directories(&running_directory, &running_directory);
 }
 
-fn find_season_directories(start_path: &Path) {
+fn find_season_directories(start_path: &Path, running_directory: &Path) {
     if let Some(name) = start_path.to_str() {
         if season_match_reg().is_match(name) {
-            return handle_season_directory(start_path);
+            return handle_season_directory(start_path, running_directory);
         }
     }
 
@@ -105,11 +105,11 @@ fn find_season_directories(start_path: &Path) {
     ls_result.sort();
 
     for path in ls_result {
-        find_season_directories(&path)
+        find_season_directories(&path, running_directory)
     }
 }
 
-fn handle_season_directory(season_path: &Path) {
+fn handle_season_directory(season_path: &Path, running_directory: &Path) {
     let mut changes = Vec::new();
     for direntry in fs::read_dir(season_path).expect(emsg!()) {
         let path = match direntry {
@@ -128,23 +128,19 @@ fn handle_season_directory(season_path: &Path) {
         }
 
         match numbers_of_episode_reg().captures(file_name) {
-            Some(caps) => {
-                // dbg!(file_name, &caps);
-                changes.push((
-                    String::from(path.to_str().expect(emsg!())),
-                    Some(format!(
-                        "{}/S{:#02}E{:#02}{}",
-                        path.parent().expect(emsg!()).to_str().expect(emsg!()),
-                        caps.get(1).unwrap().as_str().parse::<u8>().expect(emsg!()),
-                        caps.get(2).unwrap().as_str().parse::<u8>().expect(emsg!()),
-                        caps.get(3).unwrap().as_str(),
-                    )),
-                ))
-            }
+            Some(caps) => changes.push((
+                String::from(path.to_str().expect(emsg!())),
+                Some(format!(
+                    "{}/S{:#02}E{:#02}{}",
+                    path.parent().expect(emsg!()).to_str().expect(emsg!()),
+                    caps.get(1).unwrap().as_str().parse::<u8>().expect(emsg!()),
+                    caps.get(2).unwrap().as_str().parse::<u8>().expect(emsg!()),
+                    caps.get(3).unwrap().as_str(),
+                )),
+            )),
             None => changes.push((String::from(path.to_str().expect(emsg!())), None)),
         }
     }
-    // dbg!(&changes);
     changes.sort();
 
     if !changes.is_empty() {
@@ -164,7 +160,17 @@ fn handle_season_directory(season_path: &Path) {
         if worked.clone().count() > 0 {
             println!("making the following changes");
             for (og, new) in worked {
-                println!("{} -> {}", og, new)
+                println!(
+                    "{:?} -> {:?}",
+                    Path::new(og)
+                        .strip_prefix(running_directory)
+                        .unwrap()
+                        .display(),
+                    Path::new(new)
+                        .strip_prefix(running_directory)
+                        .unwrap()
+                        .display()
+                )
             }
 
             loop {
