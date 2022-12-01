@@ -39,7 +39,7 @@ static SEASON_MATCH_REG: Lazy<Regex> = Lazy::new(|| {
 });
 static GOAL_EPISODE_REG: Lazy<Regex> = Lazy::new(|| Regex::new(r"[Ss]\d\d?[Ee]\d\d?").unwrap());
 static NUMBERS_OF_EPISODE_REG: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(\d*)[^\d]*(\d*)(\..*)").unwrap());
+    Lazy::new(|| Regex::new(r"(\d+)[^\d]*(\d+)(\..*)").unwrap());
 
 fn season_match_reg() -> &'static Regex {
     &SEASON_MATCH_REG
