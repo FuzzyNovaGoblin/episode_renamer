@@ -130,26 +130,30 @@ fn handle_season_directory(season_path: &Path, running_directory: &Path) {
 
         match numbers_of_episode_reg().captures(file_name) {
             Ok(caps) => changes.push({
-                let caps = caps.expect(emsg!());
-                let caps_str = format!("{:?}", caps);
-                (
-                    String::from(path.to_str().expect(emsg!())),
-                    Some(format!(
-                        "{}/S{:#02}E{:#02}{}",
-                        path.parent().expect(emsg!()).to_str().expect(emsg!()),
-                        caps.get(1)
-                            .expect(emsg!(caps_str))
-                            .as_str()
-                            .parse::<u8>()
-                            .expect(emsg!(caps_str)),
-                        caps.get(2)
-                            .expect(emsg!(caps_str))
-                            .as_str()
-                            .parse::<u8>()
-                            .expect(emsg!(caps_str)),
-                        caps.get(3).expect(emsg!(caps_str)).as_str(),
-                    )),
-                )
+                match caps {
+                    Some(caps) => {
+                        let caps_str = format!("{:?}", caps);
+                        (
+                            String::from(path.to_str().expect(emsg!())),
+                            Some(format!(
+                                "{}/S{:#02}E{:#02}{}",
+                                path.parent().expect(emsg!()).to_str().expect(emsg!()),
+                                caps.get(1)
+                                    .expect(emsg!(caps_str))
+                                    .as_str()
+                                    .parse::<u8>()
+                                    .expect(emsg!(caps_str)),
+                                caps.get(2)
+                                    .expect(emsg!(caps_str))
+                                    .as_str()
+                                    .parse::<u8>()
+                                    .expect(emsg!(caps_str)),
+                                caps.get(3).expect(emsg!(caps_str)).as_str(),
+                            )),
+                        )
+                    }
+                    None => (String::from(path.to_str().expect(emsg!())), None),
+                }
             }),
             _ => changes.push((String::from(path.to_str().expect(emsg!())), None)),
         }
