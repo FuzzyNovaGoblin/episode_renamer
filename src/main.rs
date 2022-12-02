@@ -1,6 +1,6 @@
 #![feature(iter_intersperse)]
+use fancy_regex::Regex;
 use once_cell::sync::Lazy;
-use regex::{Regex, RegexBuilder};
 use std::{env, fs, io::stdin, path::Path, process};
 use terminal_size::{terminal_size, Height};
 
@@ -31,17 +31,18 @@ macro_rules! emsg {
     };
 }
 
-static SEASON_MATCH_REG: Lazy<Regex> = Lazy::new(|| {
-    RegexBuilder::new(".*season.*")
+static SEASON_MATCH_REG: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::RegexBuilder::new(".*season.*")
         .case_insensitive(true)
         .build()
-        .unwrap()
+        .expect(emsg!())
 });
-static GOAL_EPISODE_REG: Lazy<Regex> = Lazy::new(|| Regex::new(r"[Ss]\d\d?[Ee]\d\d?").unwrap());
+static GOAL_EPISODE_REG: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"[Ss]\d\d?[Ee]\d\d?").expect(emsg!()));
 static NUMBERS_OF_EPISODE_REG: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(\d+)[^\d]*(\d+)(\..*)").unwrap());
+    Lazy::new(|| Regex::new(r"(?<!\d)(\d{1,2})[^\d]+(\d{1,2}).*(\..*)").expect(emsg!()));
 
-fn season_match_reg() -> &'static Regex {
+fn season_match_reg() -> &'static regex::Regex {
     &SEASON_MATCH_REG
 }
 fn goal_episode_reg() -> &'static Regex {
@@ -52,7 +53,7 @@ fn numbers_of_episode_reg() -> &'static Regex {
 }
 
 fn main() {
-    let running_directory = env::current_dir().unwrap();
+    let running_directory = env::current_dir().expect(emsg!());
 
     clear_screen!();
 
@@ -63,7 +64,7 @@ fn main() {
 
     loop {
         let mut confirmation = String::new();
-        stdin().read_line(&mut confirmation).unwrap();
+        stdin().read_line(&mut confirmation).expect(emsg!());
         let confirmation = confirmation.trim();
         if confirmation.eq_ignore_ascii_case("yes") {
             break;
@@ -123,22 +124,34 @@ fn handle_season_directory(season_path: &Path, running_directory: &Path) {
 
         let file_name = path.file_name().expect(emsg!()).to_str().expect(emsg!());
 
-        if goal_episode_reg().is_match(file_name) {
+        if goal_episode_reg().is_match(file_name).unwrap_or(false) {
             continue;
         }
 
         match numbers_of_episode_reg().captures(file_name) {
-            Some(caps) => changes.push((
-                String::from(path.to_str().expect(emsg!())),
-                Some(format!(
-                    "{}/S{:#02}E{:#02}{}",
-                    path.parent().expect(emsg!()).to_str().expect(emsg!()),
-                    caps.get(1).unwrap().as_str().parse::<u8>().expect(emsg!()),
-                    caps.get(2).unwrap().as_str().parse::<u8>().expect(emsg!()),
-                    caps.get(3).unwrap().as_str(),
-                )),
-            )),
-            None => changes.push((String::from(path.to_str().expect(emsg!())), None)),
+            Ok(caps) => changes.push({
+                let caps = caps.expect(emsg!());
+                let caps_str = format!("{:?}", caps);
+                (
+                    String::from(path.to_str().expect(emsg!())),
+                    Some(format!(
+                        "{}/S{:#02}E{:#02}{}",
+                        path.parent().expect(emsg!()).to_str().expect(emsg!()),
+                        caps.get(1)
+                            .expect(emsg!(caps_str))
+                            .as_str()
+                            .parse::<u8>()
+                            .expect(emsg!(caps_str)),
+                        caps.get(2)
+                            .expect(emsg!(caps_str))
+                            .as_str()
+                            .parse::<u8>()
+                            .expect(emsg!(caps_str)),
+                        caps.get(3).expect(emsg!(caps_str)).as_str(),
+                    )),
+                )
+            }),
+            _ => changes.push((String::from(path.to_str().expect(emsg!())), None)),
         }
     }
     changes.sort();
@@ -164,11 +177,11 @@ fn handle_season_directory(season_path: &Path, running_directory: &Path) {
                     "{:?} -> {:?}",
                     Path::new(og)
                         .strip_prefix(running_directory)
-                        .unwrap()
+                        .expect(emsg!())
                         .display(),
                     Path::new(new)
                         .strip_prefix(running_directory)
-                        .unwrap()
+                        .expect(emsg!())
                         .display()
                 )
             }
@@ -176,7 +189,7 @@ fn handle_season_directory(season_path: &Path, running_directory: &Path) {
             loop {
                 println!("should these changes be made? ([y]es/[n]o/[q]uit)");
                 let mut confirmation = String::new();
-                stdin().read_line(&mut confirmation).unwrap();
+                stdin().read_line(&mut confirmation).expect(emsg!());
                 let confirmation = confirmation
                     .chars()
                     .next()
